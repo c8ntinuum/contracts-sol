@@ -22,6 +22,30 @@ use crate::C8NT_MINT;
 use crate::CustomError;
 
 #[derive(Accounts)]
+pub struct Withdraw<'info> {
+    #[account(
+      mut,
+      seeds = [CONFIG_SEED.as_bytes()],
+      bump,
+    )]
+    pub config_account: Account<'info, ConfigAccount>,
+
+    #[account(
+      mut,
+      seeds = [VAULT_ACCOUNT_SEED.as_bytes()], 
+      bump,
+    )]
+    pub vault: SystemAccount<'info>,
+
+    #[account(mut)]
+    pub receiver: UncheckedAccount<'info>,
+
+    #[account(mut)]
+    pub signer: Signer<'info>,
+    pub system_program: Program<'info, System>,
+}
+
+#[derive(Accounts)]
 pub struct Setting<'info> {
     #[account(
       mut,

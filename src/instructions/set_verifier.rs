@@ -7,8 +7,8 @@ pub fn set_verifier_handler<'info>(ctx: Context<Setting<'info>>, new_verifier: P
         return Err(CustomError::Unauthorized.into());
     }
 
-    // Check if new verifier is not empty address and is on curve
-    if new_verifier == Pubkey::default() || !new_verifier.is_on_curve() {
+    // Check if new verifier is not empty address and (is on curve - || !new_verifier.is_on_curve() - not oimplemented !!?? 0 removed)
+    if new_verifier == Pubkey::default() {
         return Err(CustomError::InvalidPubKey.into());
     }
 
@@ -17,7 +17,7 @@ pub fn set_verifier_handler<'info>(ctx: Context<Setting<'info>>, new_verifier: P
         return Err(CustomError::SameVerifier.into());
     }
 
-    // Add address to black list
+    // Add new verifier
     let config_account: &mut Account<'_, ConfigAccount> = &mut ctx.accounts.config_account;
     config_account.verifier = new_verifier;
     msg!("New verifier set to {}", config_account.verifier);

@@ -52,4 +52,12 @@ pub mod c8ntinuum {
     pub fn set_percentages<'info>(ctx: Context<Setting<'info>>, liquidity_percentage: u64, main_referral_percentage: u64, second_referral_percentage: u64) -> Result<()> {
         set_percentages_handler(ctx, liquidity_percentage, main_referral_percentage, second_referral_percentage)
     }
+
+    pub fn set_admin<'info>(ctx: Context<Setting<'info>>, new_admin: Pubkey) -> Result<()> {
+        set_admin_handler(ctx, new_admin)
+    }
+
+    pub fn withdraw<'info>(ctx: Context<Withdraw<'info>>) -> Result<()> {
+        withdraw_handler(ctx)
+    }
 }

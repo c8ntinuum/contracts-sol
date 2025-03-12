@@ -9,6 +9,9 @@ pub enum CustomError {
     #[msg("Contract calls are temporarly suspended")]
     ContractIsPaused,
 
+    #[msg("New admin is the same with old admin")]
+    SameAdmin,
+
     #[msg("New verifier is the same with old verifier")]
     SameVerifier,
 

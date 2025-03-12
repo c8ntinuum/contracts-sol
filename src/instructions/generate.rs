@@ -14,15 +14,15 @@ pub fn generate_handler<'info>(
     let timestamp = clock.unix_timestamp;
 
     // Validate input
-    require!(deadline >= timestamp, CustomError::DeadlinePassed);
     require!(ctx.accounts.config_account.is_paused == false, CustomError::ContractIsPaused);
+    require!(deadline >= timestamp, CustomError::DeadlinePassed);
     require!(slippage as u64 <= PERCENTAGE_DIVIDER / 5, CustomError::WrongSlippage);
     require!(sol_amount >= GENERATION_MIN_AMOUNT, CustomError::ValueTooLow);
-    require!(ctx.accounts.signer.to_account_info().lamports() >= sol_amount, CustomError::InsufficientBalance);
     require!(
         !ctx.accounts.config_account.black_list.contains(&ctx.accounts.signer.to_account_info().key()),
         CustomError::UserIsBlackListed
     );
+    require!(ctx.accounts.signer.to_account_info().lamports() >= sol_amount, CustomError::InsufficientBalance);
     require!(ctx.accounts.signer.to_account_info().executable == false, CustomError::SenderNotEOA);
     require!(ctnm_usd_price_oracle > 0, CustomError::InvalidPriceOracle);
 
@@ -99,25 +99,25 @@ pub fn generate_handler<'info>(
 
     // Calculate deposit distribution
     let liquidity_amount: u64 = sol_amount * ctx.accounts.config_account.liquidity_percentage / PERCENTAGE_DIVIDER;
-    let swap_amount_wsol: u64 = liquidity_amount / 2;
-    let deposit_amount_wsol: u64 = liquidity_amount / 2;
 
     // Init vault pda seeds user to sign vault transfers
     let seeds: &[&[u8]; 2] = &[VAULT_ACCOUNT_SEED.as_bytes(), &[ctx.bumps.vault]];
     let vault_seeds: &[&[&[u8]]] = &[seeds];
 
-    // Swap WSOL / C8NTM
+    // Wrap WSOL for both operations
     wrap_wsol(
         ctx.accounts.system_program.to_account_info(),
         ctx.accounts.token_program.to_account_info(),
         ctx.accounts.vault.to_account_info(),
         ctx.accounts.vault_wsol_token_account.to_account_info(),
         vault_seeds,
-        swap_amount_wsol,
+        liquidity_amount,
     )?;
+
+    // Swap WSOL / C8NTM
     swap_wsol_4_c8nt(
         ctx.accounts.raydium_swap_program.to_account_info(),     //
-        swap_amount_wsol,                                        //
+        liquidity_amount / 2,                                    //
         0,                                                       // allow any C8NT amount, we do not care since we have a validation on pool prices
         ctx.accounts.vault.to_account_info(),                    //
         ctx.accounts.pool_authority.to_account_info(),           //
@@ -138,34 +138,24 @@ pub fn generate_handler<'info>(
     // Reload accounts
     ctx.accounts.pool_c8nt_vault.reload()?;
     ctx.accounts.pool_wsol_vault.reload()?;
+    ctx.accounts.vault_wsol_token_account.reload()?;
     ctx.accounts.vault_c8nt_token_account.reload()?;
 
-    // Calculate LP tokens for depoist operation
-    let total_lp_supply: u64 = ctx.accounts.pool_lp_mint.supply;
-
     // Calculate LP tokens to receive
-    let lp_token_amount: u64 = if total_lp_supply == 0 {
-        (deposit_amount_wsol as f64 * ctx.accounts.vault_c8nt_token_account.amount as f64).sqrt() as u64
+    let lp_token_amount: u64 = if ctx.accounts.pool_lp_mint.supply == 0 {
+        (ctx.accounts.vault_wsol_token_account.amount as f64 * ctx.accounts.vault_c8nt_token_account.amount as f64).sqrt() as u64
     } else {
         std::cmp::min(
-            (deposit_amount_wsol as u128 * total_lp_supply as u128 / ctx.accounts.pool_wsol_vault.amount as u128) as u64,
-            (ctx.accounts.vault_c8nt_token_account.amount as u128 * total_lp_supply as u128 / ctx.accounts.pool_c8nt_vault.amount as u128) as u64,
+            (ctx.accounts.vault_wsol_token_account.amount as u128 * ctx.accounts.pool_lp_mint.supply as u128 / ctx.accounts.pool_wsol_vault.amount as u128) as u64,
+            (ctx.accounts.vault_c8nt_token_account.amount as u128 * ctx.accounts.pool_lp_mint.supply as u128 / ctx.accounts.pool_c8nt_vault.amount as u128) as u64,
         )
     };
 
     // Add Liquidity  WSOL / C8NTM
-    wrap_wsol(
-        ctx.accounts.system_program.to_account_info(),
-        ctx.accounts.token_program.to_account_info(),
-        ctx.accounts.vault.to_account_info(),
-        ctx.accounts.vault_wsol_token_account.to_account_info(),
-        vault_seeds,
-        liquidity_amount / 2,
-    )?;
     add_liquidity_wsol_c8nt(
         ctx.accounts.raydium_swap_program.to_account_info(),     //
         lp_token_amount,                                         //
-        deposit_amount_wsol,                                     //
+        ctx.accounts.vault_wsol_token_account.amount,            //
         ctx.accounts.vault_c8nt_token_account.amount,            //
         ctx.accounts.vault.to_account_info(),                    //
         ctx.accounts.pool_authority.to_account_info(),           //

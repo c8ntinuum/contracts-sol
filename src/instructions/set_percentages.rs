@@ -14,6 +14,7 @@ pub fn set_percentages_handler<'info>(
 
     // Validate percentages
     if PERCENTAGE_DIVIDER <= liquidity_percentage + main_referral_percentage + second_referral_percentage
+        || main_referral_percentage + second_referral_percentage > 200
         || liquidity_percentage == 0
         || main_referral_percentage == 0
         || second_referral_percentage == 0

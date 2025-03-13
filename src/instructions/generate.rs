@@ -213,11 +213,9 @@ pub fn generate_handler<'info>(
         )?;
     }
 
-    let ctnm_amount: u64 = (sol_amount as f64 * price_1_wsol_in_c8nt) as u64;
     msg!("{}", ctx.accounts.signer.to_account_info().key());
     msg!("{}", sol_amount);
     msg!("{}", sol_amount_in_usd);
-    msg!("{}", ctnm_amount);
     msg!("{}", ctnm_usd_price_oracle);
     msg!("{}", ctnm_usd_price_pool);
     msg!("{}", slippage);

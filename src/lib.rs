@@ -15,7 +15,10 @@ pub use instructions::*;
 pub use state::*;
 pub use utils::*;
 
-declare_id!("HYbDZYbzfEYdYBN7RSPZ3Y4s2KKmPB5kC7F2X6Vvq4EJ");
+// LOCAL ENVIRONMENT
+// declare_id!("HYbDZYbzfEYdYBN7RSPZ3Y4s2KKmPB5kC7F2X6Vvq4EJ");
+// LIVE ENVIRONMENT
+declare_id!("BjwbSfhtAbWbka52mQU8HHRp15LmtV5CCoaHBKhfCdvY");
 
 #[program]
 pub mod c8ntinuum {

@@ -1,3 +1,4 @@
+//src/context.rs
 use anchor_lang::{accounts::interface_account::InterfaceAccount, prelude::*};
 use anchor_spl::token_interface::{Mint, Token2022, TokenAccount, TokenInterface};
 use crate::ConfigAccount;
@@ -5,8 +6,6 @@ use crate::CONFIG_SEED;
 use crate::VAULT_ACCOUNT_SEED;
 use crate::SWAP_PROGRAM_ID;
 use crate::USDT_WSOL_POOL_ID;
-use crate::USDT_WSOL_POOL_VAULT_WSOL;
-use crate::USDT_WSOL_POOL_VAULT_USDT;
 
 use crate::C8NT_WSOL_POOL_ID;
 use crate::C8NT_WSOL_POOL_AMM_CONFIG;
@@ -24,7 +23,6 @@ use crate::CustomError;
 #[derive(Accounts)]
 pub struct Withdraw<'info> {
     #[account(
-      mut,
       seeds = [CONFIG_SEED.as_bytes()],
       bump,
     )]
@@ -95,7 +93,6 @@ pub struct Initialize<'info> {
     pub system_program: Program<'info, System>,
 }
 
-
 // Context for the generate function
 #[derive(Accounts)]
 pub struct Generate<'info> {
@@ -111,12 +108,6 @@ pub struct Generate<'info> {
 
     #[account(address = USDT_WSOL_POOL_ID)]
     pub pool_usdt_wsol: UncheckedAccount<'info>,
-
-    #[account(address = USDT_WSOL_POOL_VAULT_WSOL)]
-    pub pool_usdt_wsol_token_wsol_vault: Box<InterfaceAccount<'info, TokenAccount>>,
-
-    #[account(address = USDT_WSOL_POOL_VAULT_USDT)]
-    pub pool_usdt_wsol_token_usdt_vault: Box<InterfaceAccount<'info, TokenAccount>>,
 
     // C8NTM - WSOL pool details
     #[account(address = C8NT_WSOL_POOL_AMM_CONFIG)]
@@ -153,10 +144,18 @@ pub struct Generate<'info> {
     )]
     pub vault: SystemAccount<'info>,
 
-    #[account(mut)]
+    #[account(
+      mut,
+      associated_token::mint = WSOL_MINT,
+      associated_token::authority = vault,
+    )]  
     pub vault_wsol_token_account: Box<InterfaceAccount<'info, TokenAccount>>, //a.k.a. input/output_token_account or token_X_account
 
-    #[account(mut)]
+    #[account(
+      mut,
+      associated_token::mint = C8NT_MINT,
+      associated_token::authority = vault,
+    )]  
     pub vault_c8nt_token_account: Box<InterfaceAccount<'info, TokenAccount>>, //a.k.a. input/output_token_account or token_X_account
 
     #[account(mut)]
@@ -174,13 +173,13 @@ pub struct Generate<'info> {
     )]
     pub referral2: UncheckedAccount<'info>,
 
+    #[account(mut)]
+    pub withdraw_to: UncheckedAccount<'info>,
+
     // Common accounts
     #[account(mut)]
     pub signer: Signer<'info>,
-
     pub system_program: Program<'info, System>,
-
     pub token_program: Interface<'info, TokenInterface>,
-
     pub token_program_2022: Program<'info, Token2022>,
 }

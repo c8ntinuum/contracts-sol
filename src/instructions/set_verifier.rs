@@ -1,4 +1,4 @@
-// programs/num-token/src/instructions/initialize.rs
+//src/instructions/set_verifier.rs
 use crate::*;
 
 pub fn set_verifier_handler<'info>(ctx: Context<Setting<'info>>, new_verifier: Pubkey) -> Result<()> {
@@ -6,21 +6,16 @@ pub fn set_verifier_handler<'info>(ctx: Context<Setting<'info>>, new_verifier: P
     if ctx.accounts.signer.key() != ctx.accounts.config_account.admin {
         return Err(CustomError::Unauthorized.into());
     }
-
-    // Check if new verifier is not empty address and (is on curve - || !new_verifier.is_on_curve() - not oimplemented !!?? 0 removed)
+    // Check if new verifier is not empty address
     if new_verifier == Pubkey::default() {
         return Err(CustomError::InvalidPubKey.into());
     }
-
     // Check if new verifier is different
-    if new_verifier == ctx.accounts.config_account.verifier.key() {
+    if new_verifier == ctx.accounts.config_account.verifier {
         return Err(CustomError::SameVerifier.into());
     }
-
     // Add new verifier
     let config_account: &mut Account<'_, ConfigAccount> = &mut ctx.accounts.config_account;
     config_account.verifier = new_verifier;
-    msg!("New verifier set to {}", config_account.verifier);
-
     Ok(())
 }

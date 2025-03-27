@@ -1,4 +1,4 @@
-// programs/num-token/src/instructions/initialize.rs
+//src/instructions/resume.rs
 use crate::*;
 
 pub fn resume_handler<'info>(ctx: Context<Setting<'info>>) -> Result<()> {
@@ -6,11 +6,12 @@ pub fn resume_handler<'info>(ctx: Context<Setting<'info>>) -> Result<()> {
     if ctx.accounts.signer.key() != ctx.accounts.config_account.admin {
         return Err(CustomError::Unauthorized.into());
     }
-
-    // Pause contract
+    // Check if contract pause status is already false
+    if !ctx.accounts.config_account.is_paused {
+        return Err(CustomError::SamePause.into());
+    }
+    // Resume contract
     let config_account: &mut Account<'_, ConfigAccount> = &mut ctx.accounts.config_account;
     config_account.is_paused = false;
-    msg!("Contract resumed, is_pause set to {}", config_account.is_paused);
-
     Ok(())
 }

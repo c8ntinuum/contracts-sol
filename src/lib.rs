@@ -1,9 +1,10 @@
-// programs/num-token/src/lib.rs
+//src/lib.rs
 use anchor_lang::prelude::*;
 
 pub mod constants;
 pub mod context;
 pub mod errors;
+pub mod events;
 pub mod instructions;
 pub mod state;
 pub mod utils;
@@ -11,6 +12,7 @@ pub mod utils;
 pub use constants::*;
 pub use context::*;
 pub use errors::*;
+pub use events::*;
 pub use instructions::*;
 pub use state::*;
 pub use utils::*;
@@ -40,6 +42,10 @@ pub mod c8ntinuum {
         set_verifier_handler(ctx, new_verifier)
     }
 
+    pub fn set_withdrawal_address<'info>(ctx: Context<Setting<'info>>, new_withdrawal_address: Pubkey) -> Result<()> {
+        set_withdrawal_address_handler(ctx, new_withdrawal_address)
+    }
+
     pub fn pause<'info>(ctx: Context<Setting<'info>>) -> Result<()> {
         pause_handler(ctx)
     }
@@ -58,9 +64,5 @@ pub mod c8ntinuum {
 
     pub fn set_admin<'info>(ctx: Context<Setting<'info>>, new_admin: Pubkey) -> Result<()> {
         set_admin_handler(ctx, new_admin)
-    }
-
-    pub fn withdraw<'info>(ctx: Context<Withdraw<'info>>) -> Result<()> {
-        withdraw_handler(ctx)
     }
 }

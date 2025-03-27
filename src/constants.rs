@@ -1,4 +1,4 @@
-// programs/num-token/src/constants.rs
+//src/constants.rs
 use solana_program::{pubkey, pubkey::Pubkey};
 
 pub const CONFIG_SEED: &'static str = "config";
@@ -19,8 +19,6 @@ pub const NO_REFERRAL: Pubkey = pubkey!("YMN9Qj5jPNp7j14VPcML1B6xGgcPWVZUGLFU3Mn
 // pub const USDT_MINT: Pubkey = pubkey!("2d91XomsDYhRRkiaWhr3mds8cN1Quf66HgPaRw6t718n");
 // pub const SWAP_PROGRAM_ID: Pubkey = pubkey!("77GvZUyTXUzUuaUu3M6AducM56RkZpyoHP4NHna9CLvo");
 // pub const USDT_WSOL_POOL_ID: Pubkey = pubkey!("2RDJwPFLzGWoSQsyscU5U4reTnFWh3JibwcEcoDKQbX8");
-// pub const USDT_WSOL_POOL_VAULT_WSOL: Pubkey = pubkey!("5MpXknDjNwikSyGjNPhn6VHWH9GgRHLQnLnAALeSc4N7");
-// pub const USDT_WSOL_POOL_VAULT_USDT: Pubkey = pubkey!("6ow5mMSwRBdezsW7ZFQ7hCRm6P49Ku62UZo5HbHWU2uf");
 
 // LOCAL ENVIRONMENT
 // pub const SERVER_SIGNER_PUB: Pubkey = pubkey!("31cVhGCx453d4xWrXmUTK1pE6CzxdD1QQH9cMwbbwyU6");
@@ -37,8 +35,6 @@ pub const NO_REFERRAL: Pubkey = pubkey!("YMN9Qj5jPNp7j14VPcML1B6xGgcPWVZUGLFU3Mn
 pub const USDT_MINT: Pubkey = pubkey!("Es9vMFrzaCERmJfrF4H2FYD4KCoNkY11McCe8BenwNYB");
 pub const SWAP_PROGRAM_ID: Pubkey = pubkey!("CPMMoo8L3F4NbTegBCKVNunggL7H1ZpdTHKxQB5qKP1C");
 pub const USDT_WSOL_POOL_ID: Pubkey = pubkey!("3nMFwZXwY1s1M5s8vYAHqd4wGs4iSxXE4LRoUMMYqEgF");
-pub const USDT_WSOL_POOL_VAULT_WSOL: Pubkey = pubkey!("AbcuyoPeYnddzFoFQudsiFka8qd6tTwvLgxwtpTKTpKC");
-pub const USDT_WSOL_POOL_VAULT_USDT: Pubkey = pubkey!("2n6fxuD6PA5NYgEnXXYMh2iWD1JBJ1LGf76kFJAayZmX");
 
 // LIVE ENVIRONMENT
 pub const SERVER_SIGNER_PUB: Pubkey = pubkey!("31cVhGCx453d4xWrXmUTK1pE6CzxdD1QQH9cMwbbwyU6");

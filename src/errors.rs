@@ -1,4 +1,4 @@
-// programs/num-token/src/errors.rs
+//src/errors.rs
 use anchor_lang::prelude::*;
 
 #[error_code]
@@ -9,11 +9,20 @@ pub enum CustomError {
     #[msg("Contract calls are temporarly suspended")]
     ContractIsPaused,
 
+    #[msg("New pause status is the same with old pause status")]
+    SamePause,
+
     #[msg("New admin is the same with old admin")]
     SameAdmin,
 
     #[msg("New verifier is the same with old verifier")]
     SameVerifier,
+
+    #[msg("New withdrawal_address is the same with old withdrawal_address")]
+    SameWithdrawalAddress,
+
+    #[msg("Unauthorized withdrawal address")]
+    UnauthorizedWithdrawalAddress,
 
     #[msg("Invalid pubkey")]
     InvalidPubKey,

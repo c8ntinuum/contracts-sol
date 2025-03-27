@@ -1,3 +1,4 @@
+//src/utils.rs
 use anchor_lang::prelude::AccountInfo;
 use anchor_lang::prelude::AccountMeta;
 use anchor_lang::prelude::CpiContext;
@@ -5,36 +6,21 @@ use anchor_lang::prelude::ProgramError;
 use anchor_lang::system_program;
 use anchor_lang::Key;
 use anchor_spl::token::Burn;
-
 use solana_program::instruction::Instruction;
 use solana_program::program::invoke;
 use solana_program::program::invoke_signed;
 
 pub const Q32: u128 = (u32::MAX as u128) + 1; // 2^32
+pub const Q_RATIO: f64 = 1.0001;
 
-fn vault_amount_without_fee(
-    vault_0: u64,               //
-    protocol_fees_token_0: u64, //
-    fund_fees_token_0: u64,     //
-    vault_1: u64,               //
-    protocol_fees_token_1: u64, //
-    fund_fees_token_1: u64,     //
-) -> (u64, u64) {
-    (
-        vault_0.checked_sub(protocol_fees_token_0 + fund_fees_token_0).unwrap(),
-        vault_1.checked_sub(protocol_fees_token_1 + fund_fees_token_1).unwrap(),
-    )
+pub fn tick_to_price(tick: i32) -> f64 {
+    Q_RATIO.powi(tick)
 }
 
 pub fn token_price(
-    vault_0: u64,               //
-    protocol_fees_token_0: u64, //
-    fund_fees_token_0: u64,     //
-    vault_1: u64,               //
-    protocol_fees_token_1: u64, //
-    fund_fees_token_1: u64,     //
+    token_0_amount: u64, //
+    token_1_amount: u64, //
 ) -> (f64, f64) {
-    let (token_0_amount, token_1_amount) = vault_amount_without_fee(vault_0, protocol_fees_token_0, fund_fees_token_0, vault_1, protocol_fees_token_1, fund_fees_token_1);
     let token_0_amount_x32: u128 = token_1_amount as u128 * Q32 as u128 / token_0_amount as u128;
     let token_1_amount_x32: u128 = token_0_amount as u128 * Q32 as u128 / token_1_amount as u128;
     return (token_0_amount_x32 as f64 / (2.0_f64.powf(32.0)), token_1_amount_x32 as f64 / (2.0_f64.powf(32.0)));

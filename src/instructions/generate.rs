@@ -1,4 +1,4 @@
-// programs/num-token/src/instructions/generate.rs
+//src/instructions/generate.rs
 use crate::*;
 use solana_program::hash::hash;
 
@@ -25,16 +25,20 @@ pub fn generate_handler<'info>(
     require!(ctx.accounts.signer.to_account_info().lamports() >= sol_amount, CustomError::InsufficientBalance);
     require!(ctx.accounts.signer.to_account_info().executable == false, CustomError::SenderNotEOA);
     require!(ctnm_usd_price_oracle > 0, CustomError::InvalidPriceOracle);
+    require!(
+        ctx.accounts.withdraw_to.to_account_info().key() == ctx.accounts.config_account.withdrawal_address,
+        CustomError::UnauthorizedWithdrawalAddress
+    );
 
     // Build message hash nased on input parameters
     let message = [
-        &ctx.program_id.as_ref(),              //
-        C8NT_MINT.as_ref(),                    //
-        &ctnm_usd_price_oracle.to_le_bytes(),  //
-        &deadline.to_le_bytes(),               //
-        ctx.accounts.referral1.key().as_ref(), //
-        ctx.accounts.referral2.key().as_ref(), //
-        ctx.accounts.signer.key().as_ref(),    //
+        &ctx.program_id.as_ref(),
+        C8NT_MINT.as_ref(),
+        &ctnm_usd_price_oracle.to_le_bytes(),
+        &deadline.to_le_bytes(),
+        ctx.accounts.referral1.key().as_ref(),
+        ctx.accounts.referral2.key().as_ref(),
+        ctx.accounts.signer.key().as_ref(),
     ]
     .concat();
     let message_hash = hash(&message).to_bytes();
@@ -44,40 +48,20 @@ pub fn generate_handler<'info>(
     let is_valid_signature = solana_ed25519_verify::verify_signature(&ctx.accounts.config_account.verifier, &signature, &message_hash).map_err(|_| error!(CustomError::WrongSignature))?; // Convert `anyhow::Error` to Anchor error
     require!(is_valid_signature, CustomError::WrongSignature);
 
-    // Load pool WSOL/C8NT state to calculate prices - WSOL is always token 0 because is the smallest key ever
-    let pool_state_data: Vec<u8> = ctx.accounts.pool_state.try_borrow_data()?.to_vec();
+    // Get ratio of 1 c8nt in wsol
+    let (_, ratio_1_c8nt_in_wsol) = utils::token_price(ctx.accounts.pool_wsol_vault.amount, ctx.accounts.pool_c8nt_vault.amount);
+
+    // Get ratio of 1 wsol in usdt
+    let pool_state_data: Vec<u8> = ctx.accounts.pool_usdt_wsol.try_borrow_data()?.to_vec();
     let pool_state_bytes: &[u8] = &pool_state_data[8..];
     let pool_state: &PoolState = bytemuck::from_bytes(pool_state_bytes);
-    let (price_1_wsol_in_c8nt, price_1_c8nt_in_wsol) = utils::token_price(
-        ctx.accounts.pool_wsol_vault.amount,
-        pool_state.protocol_fees_token_0,
-        pool_state.fund_fees_token_0,
-        ctx.accounts.pool_c8nt_vault.amount,
-        pool_state.protocol_fees_token_1,
-        pool_state.fund_fees_token_1,
-    );
-
-    // Load pool WSOL/USDT state to calculate prices - WSOL is always token 0 because is the smallest key ever
-    let pool2_state_data: Vec<u8> = ctx.accounts.pool_usdt_wsol.try_borrow_data()?.to_vec();
-    let pool2_state_bytes: &[u8] = &pool2_state_data[8..];
-    let pool2_state: &PoolState = bytemuck::from_bytes(pool2_state_bytes);
-    let (price_1_wsol_in_usdt, _) = utils::token_price(
-        ctx.accounts.pool_usdt_wsol_token_wsol_vault.amount,
-        pool2_state.protocol_fees_token_0,
-        pool2_state.fund_fees_token_0,
-        ctx.accounts.pool_usdt_wsol_token_usdt_vault.amount,
-        pool2_state.protocol_fees_token_1,
-        pool2_state.fund_fees_token_1,
-    );
+    let ratio_1_wsol_in_usdt: f64 = tick_to_price(pool_state.tick_current);
 
     // Calculate C8NT price in USDT
-    let mut ctnm_usd_price_pool: u64 = (price_1_c8nt_in_wsol * price_1_wsol_in_usdt * (1_000_000_000 as f64)) as u64;
+    let mut ctnm_usd_price_pool: u64 = (ratio_1_c8nt_in_wsol * ratio_1_wsol_in_usdt * (1_000_000_000 as f64)) as u64;
     if ctnm_usd_price_pool < ctx.accounts.config_account.global_generation_price_usd {
         ctnm_usd_price_pool = ctx.accounts.config_account.global_generation_price_usd
     }
-
-    // Calculate deposited SOL value in USDT
-    let sol_amount_in_usd: u64 = (price_1_wsol_in_usdt * (sol_amount as f64)) as u64;
 
     // Validate slippage
     require!(
@@ -116,22 +100,22 @@ pub fn generate_handler<'info>(
 
     // Swap WSOL / C8NTM
     swap_wsol_4_c8nt(
-        ctx.accounts.raydium_swap_program.to_account_info(),     //
-        liquidity_amount / 2,                                    //
-        0,                                                       // allow any C8NT amount, we do not care since we have a validation on pool prices
-        ctx.accounts.vault.to_account_info(),                    //
-        ctx.accounts.pool_authority.to_account_info(),           //
-        ctx.accounts.pool_amm_config.to_account_info(),          //
-        ctx.accounts.pool_state.to_account_info(),               //
-        ctx.accounts.vault_wsol_token_account.to_account_info(), //
-        ctx.accounts.vault_c8nt_token_account.to_account_info(), //
-        ctx.accounts.pool_wsol_vault.to_account_info(),          //
-        ctx.accounts.pool_c8nt_vault.to_account_info(),          //
-        ctx.accounts.token_program.to_account_info(),            //
-        ctx.accounts.token_program.to_account_info(),            //
-        ctx.accounts.wsol_mint.to_account_info(),                //
-        ctx.accounts.c8nt_mint.to_account_info(),                //
-        ctx.accounts.pool_observation_state.to_account_info(),   //
+        ctx.accounts.raydium_swap_program.to_account_info(),
+        liquidity_amount / 2,
+        0, // allow any C8NT amount, we do not care since we have a validation on pool prices
+        ctx.accounts.vault.to_account_info(),
+        ctx.accounts.pool_authority.to_account_info(),
+        ctx.accounts.pool_amm_config.to_account_info(),
+        ctx.accounts.pool_state.to_account_info(),
+        ctx.accounts.vault_wsol_token_account.to_account_info(),
+        ctx.accounts.vault_c8nt_token_account.to_account_info(),
+        ctx.accounts.pool_wsol_vault.to_account_info(),
+        ctx.accounts.pool_c8nt_vault.to_account_info(),
+        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.wsol_mint.to_account_info(),
+        ctx.accounts.c8nt_mint.to_account_info(),
+        ctx.accounts.pool_observation_state.to_account_info(),
         vault_seeds,
     )?;
 
@@ -153,24 +137,24 @@ pub fn generate_handler<'info>(
 
     // Add Liquidity  WSOL / C8NTM
     add_liquidity_wsol_c8nt(
-        ctx.accounts.raydium_swap_program.to_account_info(),     //
-        lp_token_amount,                                         //
-        ctx.accounts.vault_wsol_token_account.amount,            //
-        ctx.accounts.vault_c8nt_token_account.amount,            //
-        ctx.accounts.vault.to_account_info(),                    //
-        ctx.accounts.pool_authority.to_account_info(),           //
-        ctx.accounts.pool_state.to_account_info(),               //
-        ctx.accounts.vault_lp_token_account.to_account_info(),   //
-        ctx.accounts.vault_wsol_token_account.to_account_info(), //
-        ctx.accounts.vault_c8nt_token_account.to_account_info(), //
-        ctx.accounts.pool_wsol_vault.to_account_info(),          //
-        ctx.accounts.pool_c8nt_vault.to_account_info(),          //
-        ctx.accounts.token_program.to_account_info(),            //
-        ctx.accounts.token_program_2022.to_account_info(),       //
-        ctx.accounts.wsol_mint.to_account_info(),                //
-        ctx.accounts.c8nt_mint.to_account_info(),                //
-        ctx.accounts.pool_lp_mint.to_account_info(),             //
-        vault_seeds,                                             //
+        ctx.accounts.raydium_swap_program.to_account_info(),
+        lp_token_amount,
+        ctx.accounts.vault_wsol_token_account.amount,
+        ctx.accounts.vault_c8nt_token_account.amount,
+        ctx.accounts.vault.to_account_info(),
+        ctx.accounts.pool_authority.to_account_info(),
+        ctx.accounts.pool_state.to_account_info(),
+        ctx.accounts.vault_lp_token_account.to_account_info(),
+        ctx.accounts.vault_wsol_token_account.to_account_info(),
+        ctx.accounts.vault_c8nt_token_account.to_account_info(),
+        ctx.accounts.pool_wsol_vault.to_account_info(),
+        ctx.accounts.pool_c8nt_vault.to_account_info(),
+        ctx.accounts.token_program.to_account_info(),
+        ctx.accounts.token_program_2022.to_account_info(),
+        ctx.accounts.wsol_mint.to_account_info(),
+        ctx.accounts.c8nt_mint.to_account_info(),
+        ctx.accounts.pool_lp_mint.to_account_info(),
+        vault_seeds,
     )?;
 
     // Deal with referrals
@@ -204,23 +188,36 @@ pub fn generate_handler<'info>(
     ctx.accounts.vault_c8nt_token_account.reload()?;
     if ctx.accounts.vault_c8nt_token_account.amount > 0 {
         burn_c8nt_from_pda(
-            ctx.accounts.token_program.to_account_info(),            //
-            ctx.accounts.c8nt_mint.to_account_info(),                //
-            ctx.accounts.vault.to_account_info(),                    //
-            ctx.accounts.vault_c8nt_token_account.to_account_info(), //
+            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.c8nt_mint.to_account_info(),
+            ctx.accounts.vault.to_account_info(),
+            ctx.accounts.vault_c8nt_token_account.to_account_info(),
             ctx.accounts.vault_c8nt_token_account.amount,
             vault_seeds,
         )?;
     }
 
-    msg!("{}", ctx.accounts.signer.to_account_info().key());
-    msg!("{}", sol_amount);
-    msg!("{}", sol_amount_in_usd);
-    msg!("{}", ctnm_usd_price_oracle);
-    msg!("{}", ctnm_usd_price_pool);
-    msg!("{}", slippage);
-    msg!("{}", ctx.accounts.referral1.key());
-    msg!("{}", ctx.accounts.referral2.key());
-    msg!("{}", hex::encode(signature));
+    // Withdraw collected sol amounts from vault
+    if ctx.accounts.vault.to_account_info().lamports() > 5_000_000 {
+        transfer_sol_from_pda(
+            ctx.accounts.system_program.to_account_info(),
+            ctx.accounts.vault.to_account_info(),
+            ctx.accounts.withdraw_to.to_account_info(),
+            ctx.accounts.vault.to_account_info().lamports() - 5_000_000,
+            vault_seeds,
+        )?;
+    }
+
+    emit!(GenerationCreated {
+        signer: ctx.accounts.signer.to_account_info().key(),
+        sol_amount: sol_amount,
+        sol_amount_in_usdt: ((ratio_1_wsol_in_usdt * (sol_amount as f64)) as u64),
+        ctnm_usd_price_oracle: ctnm_usd_price_oracle,
+        ctnm_usd_price_pool: ctnm_usd_price_pool,
+        slippage: slippage,
+        referral1: ctx.accounts.referral1.key(),
+        referral2: ctx.accounts.referral2.key(),
+        signature: hex::encode(signature),
+    });
     Ok(())
 }

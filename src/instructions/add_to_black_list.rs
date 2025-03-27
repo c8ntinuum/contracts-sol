@@ -1,10 +1,15 @@
-// programs/num-token/src/instructions/initialize.rs
+//src/instructions/add_to_black_list.rs
 use crate::*;
 
 pub fn add_to_black_list_handler<'info>(ctx: Context<SettingWithSystemProgram<'info>>, address: Pubkey) -> Result<()> {
     // Validate admin
     if ctx.accounts.signer.key() != ctx.accounts.config_account.admin {
         return Err(CustomError::Unauthorized.into());
+    }
+
+    // Check black listed address is not empty address
+    if address == Pubkey::default() {
+        return Err(CustomError::InvalidPubKey.into());
     }
 
     // Check if user is already blacklisted
@@ -25,13 +30,10 @@ pub fn add_to_black_list_handler<'info>(ctx: Context<SettingWithSystemProgram<'i
         config_account
             .to_account_info()
             .realloc(ctx.accounts.config_account.to_account_info().data_len() + 32 * BLACKLIST_LOT_SIZE, true)?;
-        msg!("Configuration account was resized");
     }
 
     // Add address to black list
     let config_account: &mut Account<'_, ConfigAccount> = &mut ctx.accounts.config_account;
     config_account.black_list.push(address);
-    msg!("Address blacklisted: {}", address);
-
     Ok(())
 }

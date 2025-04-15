@@ -30,7 +30,7 @@ pub fn generate_handler<'info>(
         CustomError::UnauthorizedWithdrawalAddress
     );
 
-    // Build message hash nased on input parameters
+    // Build message hash based on input parameters
     let message = [
         &ctx.program_id.as_ref(),
         C8NT_MINT.as_ref(),
@@ -43,9 +43,8 @@ pub fn generate_handler<'info>(
     .concat();
     let message_hash = hash(&message).to_bytes();
 
-    // Validate input parameters against signature - must be signed by our server
-    //https://docs.rs/solana_ed25519_verify/0.1.1/src/solana_ed25519_verify/lib.rs.html#1-77
-    let is_valid_signature = solana_ed25519_verify::verify_signature(&ctx.accounts.config_account.verifier, &signature, &message_hash).map_err(|_| error!(CustomError::WrongSignature))?; // Convert `anyhow::Error` to Anchor error
+    // Validate input parameters against signature
+    let is_valid_signature = solana_ed25519_verify::verify_signature(&ctx.accounts.config_account.verifier, &signature, &message_hash).map_err(|_| error!(CustomError::WrongSignature))?;
     require!(is_valid_signature, CustomError::WrongSignature);
 
     // Get ratio of 1 c8nt in wsol

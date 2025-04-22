@@ -124,13 +124,17 @@ pub fn generate_handler<'info>(
     ctx.accounts.vault_wsol_token_account.reload()?;
     ctx.accounts.vault_c8nt_token_account.reload()?;
 
-    // Calculate LP tokens to receive
-    let lp_token_amount: u64 = if ctx.accounts.pool_lp_mint.supply == 0 {
+    // Get real supply
+    let pool_state_data_wsol_c8nt: Vec<u8> = ctx.accounts.pool_state.try_borrow_data()?.to_vec();
+    let pool_state_bytes_wsol_c8nt: &[u8] = &pool_state_data_wsol_c8nt[8..];
+    let pool_state_wsol_c8nt: &PoolStateWsolCtm = bytemuck::from_bytes(pool_state_bytes_wsol_c8nt);
+
+    let lp_token_amount: u64 = if pool_state_wsol_c8nt.lp_supply == 0 {
         (ctx.accounts.vault_wsol_token_account.amount as f64 * ctx.accounts.vault_c8nt_token_account.amount as f64).sqrt() as u64
     } else {
         std::cmp::min(
-            (ctx.accounts.vault_wsol_token_account.amount as u128 * ctx.accounts.pool_lp_mint.supply as u128 / ctx.accounts.pool_wsol_vault.amount as u128) as u64,
-            (ctx.accounts.vault_c8nt_token_account.amount as u128 * ctx.accounts.pool_lp_mint.supply as u128 / ctx.accounts.pool_c8nt_vault.amount as u128) as u64,
+            (ctx.accounts.vault_wsol_token_account.amount as u128 * pool_state_wsol_c8nt.lp_supply as u128 / ctx.accounts.pool_wsol_vault.amount as u128) as u64,
+            (ctx.accounts.vault_c8nt_token_account.amount as u128 * pool_state_wsol_c8nt.lp_supply as u128 / ctx.accounts.pool_c8nt_vault.amount as u128) as u64,
         )
     };
 

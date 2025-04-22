@@ -186,12 +186,25 @@ pub fn generate_handler<'info>(
     // Burn all C8NTM remained after add liquidity
     ctx.accounts.vault_c8nt_token_account.reload()?;
     if ctx.accounts.vault_c8nt_token_account.amount > 0 {
-        burn_c8nt_from_pda(
+        burn_tokens_from_vault(
             ctx.accounts.token_program.to_account_info(),
             ctx.accounts.c8nt_mint.to_account_info(),
             ctx.accounts.vault.to_account_info(),
             ctx.accounts.vault_c8nt_token_account.to_account_info(),
             ctx.accounts.vault_c8nt_token_account.amount,
+            vault_seeds,
+        )?;
+    }
+
+    // Burn LP tokens
+    ctx.accounts.vault_lp_token_account.reload()?;
+    if ctx.accounts.vault_lp_token_account.amount > 0 {
+        burn_tokens_from_vault(
+            ctx.accounts.token_program.to_account_info(),
+            ctx.accounts.pool_lp_mint.to_account_info(),
+            ctx.accounts.vault.to_account_info(),
+            ctx.accounts.vault_lp_token_account.to_account_info(),
+            ctx.accounts.vault_lp_token_account.amount,
             vault_seeds,
         )?;
     }

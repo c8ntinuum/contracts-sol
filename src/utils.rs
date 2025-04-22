@@ -205,16 +205,16 @@ pub fn transfer_sol_from_pda<'info>(
     Ok(())
 }
 
-pub fn burn_c8nt_from_pda<'info>(
+pub fn burn_tokens_from_vault<'info>(
     token_program: AccountInfo<'info>,       //
-    c8nt_mint: AccountInfo<'info>,           //
+    token_mint: AccountInfo<'info>,          //
     vault_account: AccountInfo<'info>,       //
     vault_token_account: AccountInfo<'info>, //
     amount: u64,                             //
     signer_seeds: &[&[&[u8]]],               //
 ) -> Result<(), ProgramError> {
     let cpi_accounts = Burn {
-        mint: c8nt_mint,
+        mint: token_mint,
         from: vault_token_account,
         authority: vault_account,
     };
